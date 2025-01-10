@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语学习工具 - 收集内容</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .collections, .analysis {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .date-group {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .date-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .content-item {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .word-list, .phrase-list {
+            margin-top: 10px;
+        }
+        .word-item, .phrase-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .frequency {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .date-title {
+            cursor: pointer;
+            color: #2196F3;
+        }
+        .date-title:hover {
+            text-decoration: underline;
+        }
+        .date-title.active {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .speak-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .speak-btn:hover {
+            background: #1976D2;
+        }
+        .speak-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .speak-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .voice-select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .play-all-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .play-all-btn:hover {
+            background: #45a049;
+        }
+        .play-all-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .frequency-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        .frequency-item:hover {
+            background: #f5f5f5;
+        }
+        .item-text {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .item-count {
+            color: #666;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>英语学习工具</h1>
+    <div class="controls">
+        <select id="voice-select" class="voice-select">
+            <!-- 语音选项将通过 JavaScript 动态加载 -->
+        </select>
+        <select id="rate-select" class="voice-select">
+            <option value="0.5">0.5x 速度</option>
+            <option value="0.75">0.75x 速度</option>
+            <option value="1" selected>1.0x 速度</option>
+            <option value="1.25">1.25x 速度</option>
+            <option value="1.5">1.5x 速度</option>
+            <option value="2">2.0x 速度</option>
+        </select>
+    </div>
+    <div class="container">
+        <div class="collections">
+            <h2>收集的内容</h2>
+            <div id="collections-container">
+                <!-- 内容将通过 JavaScript 动态加载 -->
+            </div>
+        </div>
+        <div class="analysis">
+            <h2>分析结果</h2>
+            <button id="play-all-btn" class="play-all-btn">
+                <svg class="speak-icon" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                播放高频词汇
+            </button>
+            <div id="frequency-list">
+                <!-- 词频分析结果将通过 JavaScript 动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDate = null;
+        let speechSynthesis = window.speechSynthesis;
+        let voices = [];
+        let currentUtterance = null;
+        let isPlayingAll = false;
+
+        // 初始化语音合成
+        function initSpeech() {
+            // 获取可用的语音列表
+            function loadVoices() {
+                voices = speechSynthesis.getVoices();
+                const voiceSelect = document.getElementById('voice-select');
+                voiceSelect.innerHTML = '';
+                
+                // 只保留英语语音
+                const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+                
+                if (englishVoices.length === 0) {
+                    console.warn('No English voices found, using all available voices');
+                    englishVoices = voices;
+                }
+                
+                englishVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.name;
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    voiceSelect.appendChild(option);
+                });
+
+                // 如果没有选中的语音，选择第一个
+                if (voiceSelect.value === '' && englishVoices.length > 0) {
+                    voiceSelect.value = englishVoices[0].name;
+                }
+            }
+
+            // Chrome 需要等待 voiceschanged 事件
+            speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices(); // 首次加载
+
+            // 定期检查语音合成状态
+            setInterval(() => {
+                if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                    // 重置语音合成状态
+                    speechSynthesis.cancel();
+                    speechSynthesis.resume();
+                }
+            }, 5000);
+        }
+
+        // 朗读文本
+        function speak(text) {
+            // 如果正在朗读其他内容，先停止
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voiceSelect = document.getElementById('voice-select');
+            const rateSelect = document.getElementById('rate-select');
+            const selectedVoice = voices.find(voice => voice.name === voiceSelect.value);
+            
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+            
+            utterance.rate = parseFloat(rateSelect.value);
+            utterance.pitch = 1;
+            
+            speechSynthesis.speak(utterance);
+        }
+
+        // 创建朗读按钮
+        function createSpeakButton(text) {
+            const button = document.createElement('button');
+            button.className = 'speak-btn';
+            
+            button.innerHTML = `
+                <svg class="speak-icon" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+                朗读
+            `;
+
+            button.onclick = () => {
+                speak(text);
+            };
+
+            return button;
+        }
+
+        // 获取收集的内容
+        async function fetchCollections() {
+            try {
+                const response = await fetch('/api/collections');
+                const data = await response.json();
+                displayCollections(data);
+                
+                // 如果没有选中的日期，自动选择最新的日期
+                if (!currentDate && Object.keys(data).length > 0) {
+                    currentDate = Object.keys(data)[0]; // 第一个日期就是最新的
+                    analyzeContent(currentDate);
+                }
+            } catch (error) {
+                console.error('Error fetching collections:', error);
+            }
+        }
+
+        // 显示收集的内容
+        function displayCollections(collections) {
+            const container = document.getElementById('collections-container');
+            container.innerHTML = '';
+
+            Object.entries(collections).forEach(([date, items]) => {
+                const dateGroup = document.createElement('div');
+                dateGroup.className = 'date-group';
+                
+                const dateHeader = document.createElement('div');
+                dateHeader.className = 'date-header';
+                
+                const dateTitle = document.createElement('h3');
+                dateTitle.className = 'date-title' + (date === currentDate ? ' active' : '');
+                dateTitle.textContent = date;
+                dateTitle.onclick = () => {
+                    // 更新所有日期标题的样式
+                    document.querySelectorAll('.date-title').forEach(title => {
+                        title.classList.remove('active');
+                    });
+                    dateTitle.classList.add('active');
+                    currentDate = date;
+                    analyzeContent(date);
+                };
+                
+                dateHeader.appendChild(dateTitle);
+                dateGroup.appendChild(dateHeader);
+
+                items.forEach(item => {
+                    const contentItem = document.createElement('div');
+                    contentItem.className = 'content-item';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = item;
+                    contentItem.appendChild(textSpan);
+                    
+                    const speakButton = createSpeakButton(item);
+                    contentItem.appendChild(speakButton);
+                    
+                    dateGroup.appendChild(contentItem);
+                });
+
+                container.appendChild(dateGroup);
+            });
+        }
+
+        // 分析特定日期的内容
+        async function analyzeContent(date) {
+            try {
+                const response = await fetch(`/api/analyze/${date}`);
+                const data = await response.json();
+                displayAnalysis(data);
+            } catch (error) {
+                console.error('Error analyzing content:', error);
+            }
+        }
+
+        // 批量播放功能
+        async function playAllFrequentItems() {
+            const button = document.getElementById('play-all-btn');
+            
+            if (isPlayingAll) {
+                speechSynthesis.cancel();
+                isPlayingAll = false;
+                button.innerHTML = `
+                    <svg class="speak-icon" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    播放高频词汇
+                `;
+                return;
+            }
+
+            const items = document.querySelectorAll('.frequency-item .item-text');
+            const texts = Array.from(items).slice(0, 10).map(item => item.textContent || '');
+            
+            button.innerHTML = `
+                <svg class="speak-icon" viewBox="0 0 24 24">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+                停止播放
+            `;
+            isPlayingAll = true;
+
+            for (let text of texts) {
+                if (!isPlayingAll) break;
+                speak(text);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+
+            isPlayingAll = false;
+            button.innerHTML = `
+                <svg class="speak-icon" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                播放高频词汇
+            `;
+        }
+
+        // 显示分析结果
+        function displayAnalysis(analysis) {
+            const frequencyList = document.getElementById('frequency-list');
+            frequencyList.innerHTML = '';
+
+            // 合并词汇和短语，并按频率排序
+            const allItems = [
+                ...analysis.words.map(item => ({ ...item, type: 'word' })),
+                ...analysis.phrases.map(item => ({ ...item, type: 'phrase' }))
+            ].sort((a, b) => b.frequency - a.frequency);
+
+            // 显示所有项目
+            allItems.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'frequency-item';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'item-text';
+                textSpan.textContent = item.text;
+                
+                const countSpan = document.createElement('span');
+                countSpan.className = 'item-count';
+                countSpan.textContent = `${item.frequency}次`;
+                
+                itemDiv.appendChild(textSpan);
+                itemDiv.appendChild(countSpan);
+                itemDiv.appendChild(createSpeakButton(item.text));
+                
+                frequencyList.appendChild(itemDiv);
+            });
+
+            // 添加批量播放按钮事件
+            document.getElementById('play-all-btn').onclick = playAllFrequentItems;
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initSpeech();
+            fetchCollections();
+        });
+
+        // 每5秒自动刷新一次
+        setInterval(fetchCollections, 5000);
+    </script>
+</body>
+</html> 

@@ -1,0 +1,44 @@
+{
+  "name": "english-tool-desktop",
+  "version": "1.0.0",
+  "description": "English Learning Tool Desktop App",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "npx tsc && NODE_ENV=development electron .",
+    "build": "npx tsc",
+    "watch": "npx tsc -w",
+    "package": "electron-builder",
+    "make": "chmod +x scripts/build.sh && ./scripts/build.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.17.12",
+    "axios": "^1.7.9",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.7.3"
+  },
+  "build": {
+    "appId": "com.englishlearningtool.app",
+    "productName": "English Learning Tool",
+    "mac": {
+      "category": "public.app-category.education",
+      "icon": "assets/icon.png"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "public/**/*"
+    ]
+  },
+  "dependencies": {
+    "@types/express": "^5.0.0",
+    "@types/sqlite3": "^3.1.11",
+    "express": "^4.21.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}
