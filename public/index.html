@@ -139,6 +139,35 @@
             font-size: 0.9em;
             margin-right: 10px;
         }
+        .learned-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.9em;
+        }
+        .learned-btn:hover {
+            background: #45a049;
+        }
+        .learned-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+        .learned-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+            background: #f8f8f8;
+        }
+        .learned-item:hover {
+            background: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -165,14 +194,22 @@
         </div>
         <div class="analysis">
             <h2>分析结果</h2>
-            <button id="play-all-btn" class="play-all-btn">
-                <svg class="speak-icon" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-                播放高频词汇
-            </button>
+            <div class="controls">
+                <button id="play-all-btn" class="play-all-btn">
+                    <svg class="speak-icon" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    播放高频词汇
+                </button>
+            </div>
             <div id="frequency-list">
                 <!-- 词频分析结果将通过 JavaScript 动态加载 -->
+            </div>
+            <div class="learned-section">
+                <h3>已学会的单词</h3>
+                <div id="learned-list">
+                    <!-- 已学会的单词将通过 JavaScript 动态加载 -->
+                </div>
             </div>
         </div>
     </div>
@@ -384,7 +421,62 @@
             `;
         }
 
-        // 显示分析结果
+        // 标记单词为已学会
+        async function markAsLearned(text) {
+            try {
+                const response = await fetch('/api/learned', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                });
+                
+                if (response.ok) {
+                    // 同时更新所有相关内容
+                    await Promise.all([
+                        fetchCollections(),
+                        fetchLearnedItems(),
+                        currentDate ? analyzeContent(currentDate) : Promise.resolve()
+                    ]);
+                }
+            } catch (error) {
+                console.error('Error marking as learned:', error);
+            }
+        }
+
+        // 获取已学会的单词
+        async function fetchLearnedItems() {
+            try {
+                const response = await fetch('/api/learned');
+                const data = await response.json();
+                displayLearnedItems(data);
+            } catch (error) {
+                console.error('Error fetching learned items:', error);
+            }
+        }
+
+        // 显示已学会的单词
+        function displayLearnedItems(items) {
+            const learnedList = document.getElementById('learned-list');
+            learnedList.innerHTML = '';
+
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'learned-item';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'item-text';
+                textSpan.textContent = item;
+                
+                itemDiv.appendChild(textSpan);
+                itemDiv.appendChild(createSpeakButton(item));
+                
+                learnedList.appendChild(itemDiv);
+            });
+        }
+
+        // 修改显示分析结果的函数
         function displayAnalysis(analysis) {
             const frequencyList = document.getElementById('frequency-list');
             frequencyList.innerHTML = '';
@@ -408,9 +500,15 @@
                 countSpan.className = 'item-count';
                 countSpan.textContent = `${item.frequency}次`;
                 
+                const learnedBtn = document.createElement('button');
+                learnedBtn.className = 'learned-btn';
+                learnedBtn.textContent = '已学会';
+                learnedBtn.onclick = () => markAsLearned(item.text);
+                
                 itemDiv.appendChild(textSpan);
                 itemDiv.appendChild(countSpan);
                 itemDiv.appendChild(createSpeakButton(item.text));
+                itemDiv.appendChild(learnedBtn);
                 
                 frequencyList.appendChild(itemDiv);
             });
@@ -423,10 +521,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             initSpeech();
             fetchCollections();
+            fetchLearnedItems();
         });
 
         // 每5秒自动刷新一次
-        setInterval(fetchCollections, 5000);
+        setInterval(() => {
+            fetchCollections();
+            fetchLearnedItems();
+        }, 5000);
     </script>
 </body>
 </html> 
